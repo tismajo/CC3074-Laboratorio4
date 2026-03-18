@@ -253,3 +253,99 @@ plt.tight_layout()
 plt.show()
 
 
+#  3 — Análisis de grupos
+
+print("\n--- Grupos ---")
+
+# Grupo 1: Tipo de habitación
+if "room_type" in df.columns:
+    g1 = df.groupby("room_type")["price"].mean().round(2).reset_index()
+    g1.columns = ["Tipo habitación", "Precio promedio"]
+    print("\nGrupo habitacion:")
+    print(g1.to_string(index=False))
+
+# Grupo 2: Capacidad
+if "accommodates" in df.columns:
+    df["capacity_group"] = pd.cut(
+        df["accommodates"],
+        bins=[0, 2, 5, 10, 100],
+        labels=["1-2", "3-5", "6-10", "11+"]
+    )
+    g2 = df.groupby("capacity_group", observed=True)["price"].mean().round(2).reset_index()
+    g2.columns = ["Capacidad", "Precio promedio"]
+    print("\nGrupo capacidad:")
+    print(g2.to_string(index=False))
+
+    plt.figure(figsize=(7, 4))
+    df.groupby("capacity_group", observed=True)["price"].mean().plot(
+        kind="bar", color="steelblue")
+    plt.title("Precio promedio por capacidad")
+    plt.ylabel("Precio promedio (USD)")
+    plt.xticks(rotation=0)
+    plt.tight_layout()
+    plt.show()
+
+# Grupo 3: Número de reviews
+if "number_of_reviews" in df.columns:
+    df["review_group"] = pd.cut(
+        df["number_of_reviews"],
+        bins=[-1, 10, 50, 200, 9999],
+        labels=["0-10", "11-50", "51-200", "200+"]
+    )
+    g3 = df.groupby("review_group", observed=True)["price"].mean().round(2).reset_index()
+    g3.columns = ["Reviews", "Precio promedio"]
+    print("\nGrupo reviews:")
+    print(g3.to_string(index=False))
+
+
+#  4 — Split entrenamiento / prueba
+
+# Seleccionar solo numéricas para los modelos (descartamos categóricas por ahora)
+# Eliminamos columnas auxiliares que creamos en el EDA
+drop_eda = ["capacity_group", "review_group"]
+df_model = df.drop(columns=drop_eda, errors="ignore")
+
+# Quedarnos con columnas numéricas (int32, int64, float64, etc.)
+df_num_model = df_model.select_dtypes(include=[np.number]).copy()
+
+# Evitar perder todas las filas por nulos dispersos: imputamos en X.
+if "price" not in df_num_model.columns:
+    print("No esta 'price' pa modelar.")
+    sys.exit(1)
+
+y = df_num_model["price"].copy()
+X = df_num_model.drop(columns=["price"]).copy()
+
+# Quitar columnas completamente vacías y luego imputar con mediana.
+X = X.dropna(axis=1, how="all")
+X = X.fillna(X.median(numeric_only=True))
+
+if X.empty or y.empty:
+    print("No hay datos sufisientes pa entrenar.")
+    sys.exit(1)
+
+print(
+    f"Columnas numericas: {X.shape[1]} | Filas entreno: {X.shape[0]}"
+)
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+print(f"\nEntreno: {X_train.shape}")
+print(f"Prueba: {X_test.shape}")
+
+
+# 
+# 5 — Árbol de regresión con todas las variables
+arbol_reg_base = DecisionTreeRegressor(max_depth=5, random_state=42)
+arbol_reg_base.fit(X_train, y_train)
+
+# Visualización
+plt.figure(figsize=(28, 10))
+plot_tree(arbol_reg_base, feature_names=X.columns.tolist(),
+          filled=True, rounded=True, fontsize=7, max_depth=3)
+plt.title("Árbol de Regresión (profundidad=5, primeros 3 niveles)")
+plt.tight_layout()
+plt.show()
+
