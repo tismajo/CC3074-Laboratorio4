@@ -349,3 +349,70 @@ plt.title("Árbol de Regresión (profundidad=5, primeros 3 niveles)")
 plt.tight_layout()
 plt.show()
 
+#  6 — Predicción y evaluación del árbol base
+
+y_pred_base = arbol_reg_base.predict(X_test)
+
+mse_base  = mean_squared_error(y_test, y_pred_base)
+rmse_base = np.sqrt(mse_base)
+r2_base   = r2_score(y_test, y_pred_base)
+
+print(f"\nArbol regresion base (d=5)")
+print(f"MSE: {mse_base:.4f}")
+print(f"RMSE: {rmse_base:.4f}")
+print(f"R2: {r2_base:.4f}")
+
+plt.figure(figsize=(7, 5))
+plt.scatter(y_test, y_pred_base, alpha=0.3, color="steelblue")
+plt.plot([y_test.min(), y_test.max()],
+         [y_test.min(), y_test.max()], "r--", lw=2)
+plt.xlabel("Precio real")
+plt.ylabel("Precio predicho")
+plt.title(f"Árbol Regresión Base | R²={r2_base:.3f}  RMSE={rmse_base:.2f}")
+plt.tight_layout()
+plt.show()
+
+
+#  7 — 3 modelos adicionales cambiando profundidad
+
+configs_reg = [
+    {"max_depth": 3,  "label": "depth=3"},
+    {"max_depth": 10, "label": "depth=10"},
+    {"max_depth": 15, "label": "depth=15"},
+]
+
+resultados_reg = []
+
+for cfg in configs_reg:
+    m = DecisionTreeRegressor(max_depth=cfg["max_depth"], random_state=42)
+    m.fit(X_train, y_train)
+    pred = m.predict(X_test)
+    mse  = mean_squared_error(y_test, pred)
+    r2   = r2_score(y_test, pred)
+    resultados_reg.append({
+        "Modelo": cfg["label"],
+        "MSE":    round(mse, 4),
+        "RMSE":   round(np.sqrt(mse), 4),
+        "R²":     round(r2, 4)
+    })
+    print(f"{cfg['label']} -> ECM={mse:.2f} R2={r2:.4f}")
+
+# Agregar modelo base a la tabla
+resultados_reg.insert(0, {
+    "Modelo": "depth=5 (base)",
+    "MSE":    round(mse_base, 4),
+    "RMSE":   round(rmse_base, 4),
+    "R²":     round(r2_base, 4)
+})
+
+tabla_reg = pd.DataFrame(resultados_reg)
+print("\nComparacion arboles regresion:")
+print(tabla_reg.to_string(index=False))
+
+# Guardar el mejor árbol de regresión (depth=10 según informe)
+mejor_arbol_reg = DecisionTreeRegressor(max_depth=10, random_state=42)
+mejor_arbol_reg.fit(X_train, y_train)
+y_pred_mejor_reg = mejor_arbol_reg.predict(X_test)
+mse_mejor_reg  = mean_squared_error(y_test, y_pred_mejor_reg)
+rmse_mejor_reg = np.sqrt(mse_mejor_reg)
+r2_mejor_reg   = r2_score(y_test, y_pred_mejor_reg)
