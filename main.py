@@ -416,3 +416,62 @@ y_pred_mejor_reg = mejor_arbol_reg.predict(X_test)
 mse_mejor_reg  = mean_squared_error(y_test, y_pred_mejor_reg)
 rmse_mejor_reg = np.sqrt(mse_mejor_reg)
 r2_mejor_reg   = r2_score(y_test, y_pred_mejor_reg)
+
+#  8 — Regresión lineal Ridge con canal + RidgeCV
+
+# Canal: StandardScaler → RidgeCV
+alphas = [0.001, 0.01, 0.1, 1.0, 10.0, 50.0, 100.0, 500.0, 1000.0]
+
+pipeline_ridge = Pipeline([
+    ("scaler", StandardScaler()),
+    ("ridge",  RidgeCV(alphas=alphas, cv=5,
+                       scoring="neg_root_mean_squared_error"))
+])
+
+pipeline_ridge.fit(X_train, y_train)
+
+mejor_alpha = pipeline_ridge.named_steps["ridge"].alpha_
+print(f"\nMejor alfa seleccionado por RidgeCV: {mejor_alpha}")
+
+y_pred_ridge = pipeline_ridge.predict(X_test)
+mse_ridge    = mean_squared_error(y_test, y_pred_ridge)
+rmse_ridge   = np.sqrt(mse_ridge)
+r2_ridge     = r2_score(y_test, y_pred_ridge)
+
+print(f"\nRidge Pipeline (alfa={mejor_alpha})")
+print(f"MSE: {mse_ridge:.4f}")
+print(f"RMSE: {rmse_ridge:.4f}")
+print(f"R2: {r2_ridge:.4f}")
+
+# VC sobre el canal completo
+cv_rmse = -cross_val_score(
+    pipeline_ridge, X_train, y_train,
+    cv=5, scoring="neg_root_mean_squared_error"
+)
+print(f"\nVC5 RECM: {cv_rmse.mean():.4f} +- {cv_rmse.std():.4f}")
+
+# Comparación Ridge vs Mejor Árbol
+comp_reg = pd.DataFrame({
+    "Modelo": [f"Árbol Regresión (depth=10)", f"Ridge Pipeline (α={mejor_alpha})"],
+    "MSE":    [round(mse_mejor_reg, 4), round(mse_ridge, 4)],
+    "RMSE":   [round(rmse_mejor_reg, 4), round(rmse_ridge, 4)],
+    "R²":     [round(r2_mejor_reg, 4), round(r2_ridge, 4)]
+})
+print("\nComparacion final regresion:")
+print(comp_reg.to_string(index=False))
+
+# Gráfica comparativa
+fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+colores = ["#4C72B0", "#DD8452"]
+axes[0].bar(comp_reg["Modelo"], comp_reg["RMSE"], color=colores)
+axes[0].set_title("RMSE (menor = mejor)")
+axes[0].set_ylabel("RMSE")
+axes[0].tick_params(axis="x", rotation=12)
+axes[1].bar(comp_reg["Modelo"], comp_reg["R²"], color=colores)
+axes[1].set_title("R² (mayor = mejor)")
+axes[1].set_ylabel("R²")
+axes[1].set_ylim(0, 1)
+axes[1].tick_params(axis="x", rotation=12)
+plt.suptitle("Árbol de Regresión vs Ridge Pipeline", fontsize=13, fontweight="bold")
+plt.tight_layout()
+plt.show()
