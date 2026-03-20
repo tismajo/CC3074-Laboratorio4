@@ -475,3 +475,85 @@ axes[1].tick_params(axis="x", rotation=12)
 plt.suptitle("Árbol de Regresión vs Ridge Pipeline", fontsize=13, fontweight="bold")
 plt.tight_layout()
 plt.show()
+
+# 9 — Variable categórica: Económica / Intermedia / Cara
+
+q33 = df["price"].quantile(0.33)
+q66 = df["price"].quantile(0.66)
+
+print(f"\nP33 (Economica): ${q33:.2f}")
+print(f"P66 (Intermedia): ${q66:.2f}")
+
+def clasificar_precio(p):
+    if p <= q33:
+        return "Economica"
+    elif p <= q66:
+        return "Intermedia"
+    else:
+        return "Cara"
+
+df["precio_cat"] = df["price"].apply(clasificar_precio)
+
+dist_cat = df["precio_cat"].value_counts().reset_index()
+dist_cat.columns = ["Categoría", "Cantidad"]
+dist_cat["Porcentaje"] = (dist_cat["Cantidad"] / len(df) * 100).round(2)
+print("\nDistribucion de categorias:")
+print(dist_cat.to_string(index=False))
+
+plt.figure(figsize=(6, 4))
+df["precio_cat"].value_counts().plot(kind="bar", color=["#2ecc71", "#f39c12", "#e74c3c"])
+plt.title("Distribución de categorías de precio")
+plt.ylabel("Cantidad")
+plt.xticks(rotation=0)
+plt.tight_layout()
+plt.show()
+
+# PREPARACIÓN PARA CLASIFICACIÓN
+df_cls = df_num_model.copy()
+
+# Agregar la variable categórica
+df_cls["precio_cat"] = df["precio_cat"].values
+
+# Quitar price (la variable de la que se derivó precio_cat)
+df_cls.drop(columns=["price"], inplace=True, errors="ignore")
+
+# Mantener filas e imputar nulos en predictores numéricos.
+X_cls = df_cls.drop(columns=["precio_cat"]).copy()
+X_cls = X_cls.dropna(axis=1, how="all")
+X_cls = X_cls.fillna(X_cls.median(numeric_only=True))
+
+y_cls = df_cls["precio_cat"]
+
+if X_cls.empty or y_cls.empty:
+    print("No hay datos pa clasificar.")
+    sys.exit(1)
+
+X_cls_train, X_cls_test, y_cls_train, y_cls_test = train_test_split(
+    X_cls, y_cls, test_size=0.2, random_state=42, stratify=y_cls
+)
+
+print(f"\nClasificación — Train: {X_cls_train.shape} | Prueba: {X_cls_test.shape}")
+print("Distribución en train: ")
+print(y_cls_train.value_counts())
+
+
+# 10 — Árbol de clasificación
+
+arbol_cls_base = DecisionTreeClassifier(
+    criterion="gini", max_depth=5, random_state=42
+)
+arbol_cls_base.fit(X_cls_train, y_cls_train)
+
+# Visualización del árbol
+plt.figure(figsize=(28, 10))
+plot_tree(
+    arbol_cls_base,
+    feature_names=X_cls.columns.tolist(),
+    class_names=["Cara", "Economica", "Intermedia"],
+    filled=True, rounded=True, fontsize=7, max_depth=3
+)
+plt.title("Árbol de Clasificación (depth=5, primeros 3 niveles)")
+plt.tight_layout()
+plt.show()
+
+
