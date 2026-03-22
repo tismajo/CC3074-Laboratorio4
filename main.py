@@ -557,3 +557,66 @@ plt.tight_layout()
 plt.show()
 
 
+# 11 — Eficiencia en conjunto de prueba
+
+y_cls_pred_base = arbol_cls_base.predict(X_cls_test)
+
+acc_base = accuracy_score(y_cls_test, y_cls_pred_base)
+print(f"\nArbol clasificación base (d=5)")
+print(f"Acc: {acc_base:.4f} ({acc_base*100:.2f}%)")
+print("\nReporte de clasificación:")
+print(classification_report(y_cls_test, y_cls_pred_base,
+                             target_names=["Cara", "Economica", "Intermedia"]))
+
+# 12 — Matriz de confusió
+
+cm_base = confusion_matrix(y_cls_test, y_cls_pred_base,
+                            labels=["Economica", "Intermedia", "Cara"])
+
+disp = ConfusionMatrixDisplay(
+    confusion_matrix=cm_base,
+    display_labels=["Economica", "Intermedia", "Cara"]
+)
+fig, ax = plt.subplots(figsize=(7, 6))
+disp.plot(ax=ax, colorbar=True, cmap="Blues")
+plt.title("Matriz de Confusión — Árbol de Clasificación Base")
+plt.tight_layout()
+plt.show()
+
+print("\nMatriz de confusión (real x predicho):")
+print(pd.DataFrame(
+    cm_base,
+    index=["Real: Economica", "Real: Intermedia", "Real: Cara"],
+    columns=["Pred: Economica", "Pred: Intermedia", "Pred: Cara"]
+))
+
+
+#  13 — Validación cruzada
+arbol_cls_cv = DecisionTreeClassifier(
+    criterion="gini", max_depth=5, random_state=42
+)
+
+cv_scores = cross_val_score(
+    arbol_cls_cv, X_cls_train, y_cls_train,
+    cv=10, scoring="accuracy"
+)
+
+print(f"\nValidacion cruzada (10-fold)")
+print(f"Accuracy por fold {np.round(cv_scores, 4)}")
+print(f"Accuracy promedio: {cv_scores.mean():.4f}")
+print(f"Desviación estándar: {cv_scores.std():.4f}")
+
+# Entrenar con todo el entreno y predecir en prueba
+arbol_cls_cv.fit(X_cls_train, y_cls_train)
+y_pred_cv = arbol_cls_cv.predict(X_cls_test)
+acc_cv    = accuracy_score(y_cls_test, y_pred_cv)
+
+print(f"\nAcc prueba (VC): {acc_cv:.4f}")
+print(f"Acc prueba (base): {acc_base:.4f}")
+print(f"Diferencia: {acc_cv - acc_base:+.4f}")
+
+
+
+
+
+
