@@ -615,8 +615,66 @@ print(f"\nAcc prueba (VC): {acc_cv:.4f}")
 print(f"Acc prueba (base): {acc_base:.4f}")
 print(f"Diferencia: {acc_cv - acc_base:+.4f}")
 
+# 14 — 3+ modelos cambiando profundidad del árbol
 
+profundidades = [3, 6, 8, 12]
+resultados_cls = []
 
+for depth in profundidades:
+    m = DecisionTreeClassifier(
+        criterion="gini", max_depth=depth, random_state=42
+    )
+    m.fit(X_cls_train, y_cls_train)
+    pred = m.predict(X_cls_test)
+    acc  = accuracy_score(y_cls_test, pred)
 
+    # Precision por validacion cruzada
+    cv_acc = cross_val_score(
+        DecisionTreeClassifier(criterion="gini", max_depth=depth, random_state=42),
+        X_cls_train, y_cls_train, cv=5, scoring="accuracy"
+    ).mean()
+
+    resultados_cls.append({
+        "Profundidad": depth,
+        "Accuracy Test": round(acc, 4),
+        "Accuracy CV (5-fold)": round(cv_acc, 4)
+    })
+    print(f"d={depth} -> Acc prueba={acc:.4f} VC={cv_acc:.4f}")
+
+tabla_cls = pd.DataFrame(resultados_cls)
+print("\nComparacion arboles de clasificación:")
+print(tabla_cls.to_string(index=False))
+
+# Agregar base a la tabla
+tabla_cls_full = pd.concat([
+    pd.DataFrame([{
+        "Profundidad": 5,
+        "Accuracy Test": round(acc_base, 4),
+        "Accuracy CV (5-fold)": round(cv_scores.mean(), 4)
+    }]),
+    tabla_cls
+], ignore_index=True).sort_values("Profundidad")
+
+print("\nTabla completa con modelo base:")
+print(tabla_cls_full.to_string(index=False))
+
+# Grafica de precision por profundidad
+plt.figure(figsize=(8, 4))
+plt.plot(
+    tabla_cls_full["Profundidad"],
+    tabla_cls_full["Accuracy Test"],
+    marker="o", label="Test", color="steelblue"
+)
+plt.plot(
+    tabla_cls_full["Profundidad"],
+    tabla_cls_full["Accuracy CV (5-fold)"],
+    marker="s", label="CV 5-fold", color="coral", linestyle="--"
+)
+plt.xlabel("Profundidad del árbol")
+plt.ylabel("Accuracy")
+plt.title("Accuracy vs Profundidad del árbol de clasificación")
+plt.legend()
+plt.tight_layout()
+plt.show()
 
 
