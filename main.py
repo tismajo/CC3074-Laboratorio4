@@ -677,4 +677,85 @@ plt.legend()
 plt.tight_layout()
 plt.show()
 
+#  15 — Bosque Aleatorio
+
+print("\nRandom Forest Clasificación")
+
+rf_cls = RandomForestClassifier(
+    n_estimators=100,
+    max_depth=10,
+    random_state=42,
+    n_jobs=-1
+)
+rf_cls.fit(X_cls_train, y_cls_train)
+y_pred_rf = rf_cls.predict(X_cls_test)
+
+acc_rf = accuracy_score(y_cls_test, y_pred_rf)
+print(f"Acc RF: {acc_rf:.4f} ({acc_rf*100:.2f}%)")
+print("\nReporte RF:")
+print(classification_report(y_cls_test, y_pred_rf,
+                             target_names=["Cara", "Economica", "Intermedia"]))
+
+# Matriz de confusión RF
+cm_rf = confusion_matrix(y_cls_test, y_pred_rf,
+                          labels=["Economica", "Intermedia", "Cara"])
+disp_rf = ConfusionMatrixDisplay(
+    confusion_matrix=cm_rf,
+    display_labels=["Economica", "Intermedia", "Cara"]
+)
+fig, ax = plt.subplots(figsize=(7, 6))
+disp_rf.plot(ax=ax, colorbar=True, cmap="Greens")
+plt.title("Matriz de Confusión — Random Forest")
+plt.tight_layout()
+plt.show()
+
+# Importancia de variables RF
+feat_imp = pd.Series(
+    rf_cls.feature_importances_,
+    index=X_cls.columns
+).sort_values(ascending=False).head(15)
+
+plt.figure(figsize=(9, 5))
+feat_imp.plot(kind="bar", color="steelblue")
+plt.title("Top 15 variables más importantes — Random Forest")
+plt.ylabel("Importancia")
+plt.xticks(rotation=45, ha="right")
+plt.tight_layout()
+plt.show()
+
+# ── Comparación final árbol vs RF ─────────────────────────
+
+# Mejor árbol de clasificación (buscar el de mejor precision)
+mejor_depth_cls = tabla_cls_full.loc[
+    tabla_cls_full["Accuracy Test"].idxmax(), "Profundidad"
+]
+mejor_arbol_cls = DecisionTreeClassifier(
+    criterion="gini", max_depth=mejor_depth_cls, random_state=42
+)
+mejor_arbol_cls.fit(X_cls_train, y_cls_train)
+acc_mejor_arbol = accuracy_score(y_cls_test, mejor_arbol_cls.predict(X_cls_test))
+
+comp_final = pd.DataFrame({
+    "Modelo": [
+        f"Árbol Clasificación (depth={mejor_depth_cls})",
+        "Random Forest (n=100, depth=10)"
+    ],
+    "Accuracy Test": [round(acc_mejor_arbol, 4), round(acc_rf, 4)]
+})
+print("\nComp final: Arbol vs RF")
+print(comp_final.to_string(index=False))
+
+# Gráfica comparación final
+plt.figure(figsize=(6, 4))
+plt.bar(comp_final["Modelo"], comp_final["Accuracy Test"],
+        color=["#4C72B0", "#2ca02c"])
+plt.title("Accuracy: Árbol de Clasificación vs Random Forest")
+plt.ylabel("Accuracy")
+plt.ylim(0, 1)
+plt.xticks(rotation=10)
+plt.tight_layout()
+plt.show()
+
+
+print("\nListo, ya corrio :3")
 
